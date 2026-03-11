@@ -1,0 +1,50 @@
+import Map "mo:core/Map";
+import List "mo:core/List";
+import Principal "mo:core/Principal";
+import Runtime "mo:core/Runtime";
+
+actor {
+  let admin = Principal.fromText("w7x7r-cok77-xa");
+  let orders = Map.empty<Principal, List.List<Order>>();
+
+  type Product = {
+    name : Text;
+    quantity : Nat;
+  };
+
+  type Order = {
+    customerName : Text;
+    phoneNumber : Text;
+    deliveryAddress : Text;
+    items : [Product];
+  };
+
+  public shared ({ caller }) func submitOrder(customerName : Text, phoneNumber : Text, deliveryAddress : Text, items : [Product]) : async () {
+    let order : Order = {
+      customerName;
+      phoneNumber;
+      deliveryAddress;
+      items;
+    };
+
+    switch (orders.get(caller)) {
+      case (?existingOrders) {
+        existingOrders.add(order);
+      };
+      case (null) {
+        let newOrders = List.singleton<Order>(order);
+        orders.add(caller, newOrders);
+      };
+    };
+  };
+
+  public shared ({ caller }) func getAllOrders() : async [(Principal, [Order])] {
+    if (caller != admin) {
+      Runtime.trap("Unauthorized access: Only admin can call this method.");
+    };
+    orders.toArray().map<(
+      Principal,
+      List.List<Order>,
+    ), (Principal, [Order])>(func((principal, orderList)) { (principal, orderList.toArray()) });
+  };
+};
